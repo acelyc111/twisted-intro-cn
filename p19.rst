@@ -14,7 +14,7 @@
 2. 这个代理联系实际服务器以得到这首诗
 3. 一旦这首诗完成,将其发送给原发出请求的代理
 
-看起来非常完美,但是如果客户端在获得诗歌之前挂了怎么办?也许它们先前请求 `Paradise Lost <http://www.online-literature.com/milton/paradiselost/>`_ 的全部内容,随后它们决定实际想要的是 `Kojo <http://www.toyomasu.com/haiku/#kojo>`_ 的俳句.我们的代理将陷入下载前者,并且那个慢服务器会等好一会.最好的策略便是关闭连接,让慢服务器回去顺觉.
+看起来非常完美,但是如果客户端在获得诗歌之前挂了怎么办?也许它们先前请求 `Paradise Lost <http://www.online-literature.com/milton/paradiselost/>`_ 的全部内容,随后它们决定实际想要的是 `Kojo <http://www.toyomasu.com/haiku/#kojo>`_ 的俳句.我们的代理将陷入下载前者,并且那个慢服务器会等好一会.最好的策略便是关闭连接,让慢服务器回去睡觉.
 
 回忆一下 :ref:`figure15`,展示了同步程序控制流的概念.在那张图中我们可以看到函数调用自上而下,异常是自下而上.如果我们希望取消一个同步调用(这仅是假设),控制流的传递方向与函数调用的方向一致,都是从高层传向底层,如图38所示:
 
@@ -50,7 +50,7 @@
 	d.cancel()
 	print 'done'
 
-伴随着新的取消特性, ``Deferred`` 类获得一个名为 ``cancel`` 的新方法.上面代码创建了一个新的 ``deferred``,添加了一个回调,这后取消了这个 ``deferred`` 而没有激发它.输出如下:
+伴随着新的取消特性, ``Deferred`` 类获得一个名为 ``cancel`` 的新方法.上面代码创建了一个新的 ``deferred``,添加了一个回调,最后取消了这个 ``deferred`` 而没有激发它.输出如下:
 ::
 
 	done
@@ -106,7 +106,7 @@ OK,让我们试试激发 ``deferred`` 然后取消它,如 `deferred-cancel/defer
 	callback got: result
 	done
 
-我们的回调被调用(正如我们所预期的)之后程序正常结束,就像 ``cancel`` 根本没有被调用.所以取消一个 ``deferred`` 好像根本没有效果如果它已经被激发(但请继续阅读!).
+我们的回调被调用(正如我们所预期的)之后程序正常结束,就像 ``cancel`` 根本没有被调用.所以如果一个 ``deferred``已经被激发，再取消它好像根本没有效果(但请继续阅读!).
 
 如果我们在取消 ``deferred`` 之后激发它会怎样?参看 `deferred-cancel/defer-cancel-4.py <https://github.com/jdavisp3/twisted-intro/blob/master/deferred-cancel/defer-cancel-4.py#L1>`_:
 ::
@@ -141,9 +141,9 @@ OK,让我们试试激发 ``deferred`` 然后取消它,如 `deferred-cancel/defer
 1. 告诉 ``Deferred`` 对象本身你不想要那个结果,如果它还没有返回(如, ``deferred`` 没有被激发),这样忽略任何回调或错误回调的后续调用.
 2. 同时,可选地,告诉正在产生结果的底层代码需要采取何种步骤来取消操作.
 
-由于旧版本的Twisted代码会上前去激发任何已经被取消的 ``deferred``, step#1确保我们的程序不会垮掉如果我们取消一个旧有库中的 ``deferred``.
+由于旧版本的Twisted代码会上激发任何已经被取消的 ``deferred``, 当我们取消一个旧有库中的 ``deferred``时，step#1确保我们的程序不会垮掉.
 
-这意味着我们可以随心所欲地取消一个 ``deferred``,同时可以确定不会得到结果如果它还没有到来(甚至那些 **将要** 到来的).但是取消 ``deferred`` 可能并没有取消异步操作.终止一个异步操作需要一个上下文的具体行动.你可能需要关闭网络连接,回滚数据库事务,结束子进程,等等.由于 ``deferred`` 仅仅是一般目的的回调组织者,它怎么知道具体要做什么当你取消它时?或者,换种说法,它怎样将 ``cancel`` 请求传递给首先已经创建和返回了 ``deferred`` 的底层代码? 和我一起说:
+这意味着我们可以随心所欲地取消一个 ``deferred``,同时可以确定在它还没有到来(甚至 **将要** 到来)时，不会得到结果.但是取消 ``deferred`` 可能并没有取消异步操作.终止一个异步操作需要一个上下文的具体行动.你可能需要关闭网络连接,回滚数据库事务,结束子进程,等等.由于 ``deferred`` 仅仅是一般目的的回调组织者,当你取消它时，它怎么知道具体要做什么?或者,换种说法,它怎样将 ``cancel`` 请求传递给首先已经创建和返回了 ``deferred`` 的底层代码呢? 和我一起说:
 ::
 
 	I know, with a callback!
@@ -170,7 +170,7 @@ OK,让我们试试激发 ``deferred`` 然后取消它,如 `deferred-cancel/defer
 	d.cancel()
 	print 'done'
 
-这个例子基本上跟第二个例子相同,除了有第三个回调(``canceller``).这个回调是我们在创建 ``Deferred`` 的时候传递给它的,不是之后添加的.这个回调负责执行终止异步操作时所需的上下文相关的具体操作(当然,仅当 ``deferred`` 被实际取消). ``canceller`` 回调是返回 ``deferred``  的底层代码的必要部分,不是接收 ``deferred`` 的高层代码为其自己添加的回调和错误回调.
+这个例子基本上跟第二个例子相同,除了有第三个回调(``canceller``).这个回调是我们在创建 ``Deferred`` 的时候传递给它的,不是之后添加的.**这个回调负责执行终止异步操作时所需的上下文相关的具体操作**(当然,仅当 ``deferred`` 被实际取消). ``canceller`` 回调是返回 ``deferred``  的底层代码的必要部分,不是接收 ``deferred`` 的高层代码为其自己添加的回调和错误回调.
 
 运行这个例子将产生如下输出:
 ::
@@ -180,7 +180,7 @@ OK,让我们试试激发 ``deferred`` 然后取消它,如 `deferred-cancel/defer
 	]
 	done
 
-正如你所看到, 不需要返回结果的 ``deferred`` 被传递给 ``canceller`` 回调.在这里我们可以做任何需要做的事情以便彻底终止异步操作.注意 ``canceller`` 在错误回调链激发前被调用.其实我们可以在取消回调中选择使用任何结果或错误自己激发 ``deferred`` (这样就会优先于 ``CancelledError`` 失败).这两种情况在 `deferred-cancel/defer-cancel-6.py <https://github.com/jdavisp3/twisted-intro/blob/master/deferred-cancel/defer-cancel-6.py#L1>`_  和 `deferred-cancel/defer-cancel-7.py <https://github.com/jdavisp3/twisted-intro/blob/master/deferred-cancel/defer-cancel-7.py#L1>`_ 中进行了说明.
+正如你所看到, 不需要返回结果的 ``deferred`` 被传递给 ``canceller`` 回调.在这里我们可以做任何需要做的事情以便彻底终止异步操作.注意 ``canceller`` 在错误回调链激发前被调用.其实我们可以在``canceller`` 回调中选择使用任何结果或错误自己激发 ``deferred`` (这样就会优先于 ``CancelledError`` 失败).这两种情况在 `deferred-cancel/defer-cancel-6.py <https://github.com/jdavisp3/twisted-intro/blob/master/deferred-cancel/defer-cancel-6.py#L1>`_  和 `deferred-cancel/defer-cancel-7.py <https://github.com/jdavisp3/twisted-intro/blob/master/deferred-cancel/defer-cancel-7.py#L1>`_ 中进行了说明.
 
 在激发 ``reactor`` 之前先做一个简单的测试.我们将使用 ``canceller`` 回调创建一个 ``deferred``,正常的激发它,之后取消它.你可以在 `deferred-cancel/defer-cancel-8.py <https://github.com/jdavisp3/twisted-intro/blob/master/deferred-cancel/defer-cancel-8.py#L1>`_ 中看到代码.通过检查那个脚本的输出,你将看到取消一个被激发的 ``deferred`` 不会调用 ``canceller`` 回调.这正是我们所要的,因为没什么可取消的.
 
@@ -294,7 +294,7 @@ OK,让我们试试激发 ``deferred`` 然后取消它,如 `deferred-cancel/defer
 你可以与 `旧版本 <https://github.com/jdavisp3/twisted-intro/blob/master/twisted-server-2/poetry-proxy.py#L52>`_ 对比一下.两个主要的变化是:
 
 1. 保存我们从 `get_poem` 得到的 ``deferred``,以便之后在需要时取消它.
-2. 当连接关闭时取消 ``deferred``.注这个操作同样会取消 ``deferred`` 当我们实际得到诗歌之后,但正如前例所发现的,取消一个被激发的 ``deferred`` 不会有任何效果. 
+2. 当连接关闭时取消 ``deferred``.注意这个操作同样会取消 ``deferred`` 当我们实际得到诗歌之后,但正如前例所发现的,取消一个被激发的 ``deferred`` 不会有任何效果. 
 
 现在我们需要确保取消 ``deferred`` 将实际终止诗歌的下载. 所以我们需要改变 `ProxyService <https://github.com/jdavisp3/twisted-intro/blob/master/twisted-server-4/poetry-proxy.py#L105>`_:
 ::
@@ -366,9 +366,9 @@ OK,让我们试试激发 ``deferred`` 然后取消它,如 `deferred-cancel/defer
 ===========
 以上我们曾不止一次说取消一个已经激发的 ``deferred`` 是没有效果的.然而,这不是十分正确.在 :doc:`p13` 中,我们学习了附加给一个 ``deferred`` 的回调和错误回调也可能返回另一个 ``deferred``.在那种情况下,原始的(外层) ``deferred`` 暂停执行它的回调链并且等待内层 ``deferred`` 激发(参见 `figure28`_).
 
-如此, 即使一个 ``deferred`` 激发了发出异步请求的高层代码,它也不能接收到结果,因为在等待内层 ``deferred`` 完成之前回调链暂停了. 所以当高层代码取消这个外部 ``deferred`` 时会发生什么情况呢? 在这种情况下,外部 ``deferred`` 不仅仅是取消它自己(它已经激发了);相反地,这个 ``deferred`` 取消内部的 ``deferred``.
+如此, 即使一个 ``deferred`` 激发了发出异步请求的高层代码,它也不能接收到结果,因为在等待内层 ``deferred`` 完成之前回调链暂停了. 所以当高层代码取消这个外部 ``deferred`` 时会发生什么情况呢? 在这种情况下,外部 ``deferred`` 不是取消它自己(它已经激发了);相反地,这个 ``deferred`` 取消内部的 ``deferred``.
 
-所以当你取消一个 ``deferred`` 时,你可能不是在取消主异步操作,而是一些其他的作为前者结果所触发的异步操作.呼!
+所以当你取消一个 ``deferred`` 时,你可能不是在取消主异步操作,而可能是一些其他的作为前者结果所触发的异步操作.呼!
 
 我们可以用一个例子来说明.考虑代码 `deferred-cancel/defer-cancel-12.py <https://github.com/jdavisp3/twisted-intro/blob/master/deferred-cancel/defer-cancel-12.py#L1>`_:
 ::
